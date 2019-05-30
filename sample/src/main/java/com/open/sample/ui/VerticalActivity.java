@@ -2,6 +2,8 @@ package com.open.sample.ui;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
@@ -12,6 +14,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.open.leanback.widget.ArrayObjectAdapter;
 import com.open.leanback.widget.HeaderItem;
@@ -24,6 +27,7 @@ import com.open.leanback.widget.VerticalGridView;
 import com.open.sample.R;
 import com.open.sample.entity.Image;
 import com.open.sample.entity.Movie;
+import com.open.sample.player.VideoPlayerPageActivity;
 import com.open.sample.presenter.CardPresenter;
 import com.open.sample.presenter.NewPresenterSelector;
 
@@ -47,15 +51,59 @@ public class VerticalActivity extends Activity {
     private static final int NUM_ROWS = 3;
     private static final int NUM_COLS = 5;
 
+    private ProgressDialog progressDialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_vertical);
+
+        Intent intent = getIntent();
+        Bundle bundle = intent.getExtras();
+        if (bundle != null) {
+            //1、通过语音控制功能打开app
+            String voiceKey = bundle.getString("name");
+            if (voiceKey != null) {
+                progressDialog = ProgressDialog.show(this, "提示", "正在解析语音数据，请稍后...");
+                progressDialog.show();
+                requestServerData(voiceKey);
+            } else {
+                Toast.makeText(this, "解析语音失败!", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            //2、通过普通方式启动app
+            loadNormalUI();
+        }
+    }
+
+    /**
+     * 开始获取服务器数据
+     */
+    private void requestServerData(String voiceKey) {
+        BmobQuery<Movie> categoryBmobQuery = new BmobQuery<>();
+        categoryBmobQuery.addWhereContains("title", voiceKey);
+        categoryBmobQuery.findObjects(new FindListener<Movie>() {
+            @Override
+            public void done(List<Movie> list, BmobException e) {
+                progressDialog.dismiss();
+                if (e == null && list != null && !list.isEmpty()) {
+                    Movie movie = list.get(0);
+                    Intent intent = new Intent(VerticalActivity.this, VideoPlayerPageActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.putExtra(VideoPlayerPageActivity.MOVIE, movie.getVideoFile().getFileUrl());
+                    finish();
+                } else {
+                    Toast.makeText(VerticalActivity.this, "抱歉，未找到您需要的内容，请重试！", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void loadNormalUI() {
         mRecyclerView = findViewById(R.id.recyclerView);
         mRowsAdapter = new ArrayObjectAdapter(new NewPresenterSelector()); // 填入Presenter选择器.
         movieList = new ArrayList<>();
         imageList = new ArrayList<>();
-//        loadData();
         queryNetData();
     }
 
@@ -70,13 +118,13 @@ public class VerticalActivity extends Activity {
             public void onChildViewHolderSelected(RecyclerView parent, RecyclerView.ViewHolder viewHolder, int position, int subposition) {
                 Log.d("hailongqiu", "选择一行");
                 // 测试一行选中颜色的改变.
-                if(mSelectedViewHolder != viewHolder || mSubPosition != subposition) {
+                if (mSelectedViewHolder != viewHolder || mSubPosition != subposition) {
                     mSubPosition = subposition;
-                    if(mSelectedViewHolder != null) {
+                    if (mSelectedViewHolder != null) {
                         setRowViewSelected(mSelectedViewHolder, false);
                     }
-                    mSelectedViewHolder = (ItemBridgeAdapter.ViewHolder)viewHolder;
-                    if(mSelectedViewHolder != null) {
+                    mSelectedViewHolder = (ItemBridgeAdapter.ViewHolder) viewHolder;
+                    if (mSelectedViewHolder != null) {
                         setRowViewSelected(mSelectedViewHolder, true);
                     }
                 }
@@ -193,7 +241,7 @@ public class VerticalActivity extends Activity {
     };
 
     /**
-     *  测试一行选中的颜色改变.
+     * 测试一行选中的颜色改变.
      */
     @TargetApi(Build.VERSION_CODES.M)
     void setRowViewSelected(ItemBridgeAdapter.ViewHolder vh, boolean selected) {
@@ -202,7 +250,6 @@ public class VerticalActivity extends Activity {
 
     private static final int GRID_ITEM_WIDTH = 200;
     private static final int GRID_ITEM_HEIGHT = 200;
-
 
 
     // 测试其它数据.

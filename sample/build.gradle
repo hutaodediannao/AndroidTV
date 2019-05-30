@@ -23,7 +23,7 @@ android {
     applicationVariants.all { variant ->
         variant.outputs.all {
             // 输出apk名称为WeiLaiCheng1.0_2018-08-13.apk
-            def fileName = "禅吻-v${defaultConfig.versionName}.apk"
+            def fileName = "禅吻(语音版)-v${defaultConfig.versionName}.apk"
             outputFileName = fileName
         }
     }
